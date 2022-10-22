@@ -19,7 +19,5 @@ def custom_exception_handler(exc, context):
 
 
 def handle_generic_error(exc, context, response):
-    response.data = {
-        'detail': 'Страница не найдена'
-    }
+    response.data['detail'] = 'Страница не найдена.'
     return response

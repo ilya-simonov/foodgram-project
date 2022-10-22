@@ -1,10 +1,12 @@
+from colorfield.fields import ColorField
 from django.db import models
+from drf_extra_fields.fields import Base64ImageField
 from users.models import User
 
 
 class Tag(models.Model):
     name = models.CharField('Название', max_length=200)
-    color = models.CharField(max_length=7, blank=True)
+    color = ColorField(blank=True)
     slug = models.SlugField('slug', max_length=200, unique=True)
 
     class Meta:
@@ -40,10 +42,16 @@ class Recipe(models.Model):
         verbose_name='Автор рецепта'
     )
     ingredients = models.ManyToManyField(
-        Ingredient
+        Ingredient,
+        through='IngredientRecipe',
+        related_name='recipes'
     )
     name = models.CharField('Название', max_length=200)
-    image = models.URLField('Ссылка на картинку на сайте')
+    image = models.ImageField(
+        upload_to='recipes/images/',
+        null=True,
+        default=None
+        )
     text = models.TextField('Описание')
     cooking_time = models.IntegerField(
         verbose_name='Время приготовления',
@@ -56,3 +64,34 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class IngredientRecipe(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
+                               related_name='ingredient_recipes')
+    ingredient = models.ForeignKey(Ingredient,  on_delete=models.CASCADE,
+                                   related_name='ingredient_recipes')
+    amount = models.PositiveSmallIntegerField('Количество')
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        unique_together = [['user', 'author']]
+
+    def __str__(self):
+        return (
+            f'{self.user} подписан на {self.author}'
+        )
