@@ -2,11 +2,13 @@ from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from rest_framework import status, mixins, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 
 from api.serializers import (CustomUserSerializer, TagSerializer,
-                             IngredientSerializer, RecipeSerializer)
-from recipes.models import Ingredient, Tag, Recipe
+                             IngredientSerializer, RecipeSerializer,
+                             SubscriptionSerializer)
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
+from recipes.models import Ingredient, Tag, Recipe, Follow
 from users.models import User
 
 
@@ -35,6 +37,7 @@ class TagViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                  viewsets.GenericViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    # permission_classes = (AllowAny,)
 
 
 class IngredientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
@@ -50,8 +53,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class SubscriptionViewSet(mixins.ListModelMixin,
                           viewsets.GenericViewSet):
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
-        
+    serializer_class = SubscriptionSerializer
 
+    def get_queryset(self):
+        request = self.request
+        queryset = User.objects.filter(following__user=request.user)
+        return queryset

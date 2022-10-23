@@ -76,13 +76,29 @@ class RecipeSerializer(serializers.ModelSerializer):
                   'text', 'cooking_time']
 
 
-# class SubscriptionSerializer(CustomUserSerializer):
+class RecipeShortSerializer(serializers.ModelSerializer):
+    image = Base64ImageField(allow_null=True)
 
-#    class Meta:
-#        model = User
-#        fields = ['email', 'id', 'username', 'first_name', 'last_name',
-#                  'is_subscribed']
-    
+    class Meta:
+        model = Recipe
+        fields = ['id', 'name', 'image',
+                  'cooking_time']
+
+
+class SubscriptionSerializer(CustomUserSerializer):
+    recipes = RecipeShortSerializer(many=True, read_only=True)
+    recipes_count = serializers.SerializerMethodField(
+        read_only=True
+    )
+
+    class Meta:
+        model = User
+        fields = ['email', 'id', 'username', 'first_name', 'last_name',
+                  'is_subscribed', 'recipes', 'recipes_count']
+
+    def get_recipes_count(self, obj):
+        recipes_count = obj.recipes.count()
+        return recipes_count
 
 
 
