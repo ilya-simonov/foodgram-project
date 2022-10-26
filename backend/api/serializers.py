@@ -2,7 +2,8 @@ from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
 from djoser.serializers import UserSerializer
 
-from recipes.models import Ingredient, Tag, Recipe, IngredientRecipe
+from rest_framework.validators import UniqueTogetherValidator
+from recipes.models import Ingredient, Tag, Recipe, IngredientRecipe, Follow
 from users.models import User
 from djoser import utils
 from djoser.compat import get_user_email, get_user_email_field_name
@@ -24,7 +25,7 @@ class CustomUserSerializer(UserSerializer):
         request = self.context['request']
         user = request.user
         # if request is None or
-        if request.user.is_anonymous:
+        if user.is_anonymous:
             return False
         return user.follower.filter(author=obj).exists()
 
@@ -100,6 +101,35 @@ class SubscriptionSerializer(CustomUserSerializer):
         recipes_count = obj.recipes.count()
         return recipes_count
 
+
+class SubscribeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Follow
+        fields = ['user', 'author']
+        validators = (
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'author')
+            ),
+        )
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        serializer = SubscriptionSerializer(
+            instance.author,
+            context=context
+        )
+        return serializer.data
+
+    def validate_author(self, value):
+        request = self.context['request']
+        user = request.user
+        if user == value:
+            raise serializers.ValidationError(
+                'Нельзя подписаться на самого себя!'
+            )
+        return value
 
 
 
