@@ -1,8 +1,9 @@
 from rest_framework import routers
 from django.urls import include, path
 
-from api.views import (CustomUserViewSet, TagViewSet, IngredientViewSet,
-                       RecipeViewSet, SubscriptionViewSet, SubscribeViewSet)
+from api.views import (TagViewSet, IngredientViewSet,
+                       RecipeViewSet, SubscriptionViewSet, SubscribeViewSet,
+                       FavoriteViewSet)
 
 
 app_name = 'api'
@@ -10,8 +11,12 @@ app_name = 'api'
 router = routers.DefaultRouter()
 # router.register(r'users', CustomUserViewSet)
 router.register(r'tags', TagViewSet)
-router.register(r'ingredints', IngredientViewSet)
+router.register(r'ingredients', IngredientViewSet)
 router.register(r'recipes', RecipeViewSet)
+router.register(r'recipes/(?P<id>\d+)/favorite',
+                FavoriteViewSet,
+                basename='favorite'
+                )
 router.register(r'users/subscriptions', SubscriptionViewSet,
                 basename='subscription')
 router.register(r'users/(?P<id>\d+)/subscribe',
@@ -19,15 +24,8 @@ router.register(r'users/(?P<id>\d+)/subscribe',
                 basename='subscribe'
                 )
 
-# router.register(r'users', SubscribeViewSet,
-#                basename='subscribe')
-                # r'users/(?P<id>\d+)
-
 urlpatterns = router.urls
 urlpatterns += [
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
-    path('users/<int:id>/subscribe/',
-         SubscribeViewSet.as_view({'post': 'subscribe'}),
-         name='subscribe')
 ]

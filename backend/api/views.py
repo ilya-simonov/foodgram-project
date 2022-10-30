@@ -4,12 +4,13 @@ from rest_framework import status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from api.serializers import (CustomUserSerializer, TagSerializer,
-                             IngredientSerializer, RecipeSerializer,
-                             SubscriptionSerializer, SubscribeSerializer)
+from api.serializers import (TagSerializer, IngredientSerializer,
+                             RecipeSerializer, RecipeCreateUpdateSerializer,
+                             SubscriptionSerializer, SubscribeSerializer,
+                             FavoriteSerializer)
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
-from recipes.models import Ingredient, Tag, Recipe, Follow
+from recipes.models import Ingredient, Tag, Recipe, Follow, Favorite
 from users.models import User
 
 
@@ -53,6 +54,11 @@ class IngredientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
+
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return RecipeSerializer
+        return RecipeCreateUpdateSerializer
 
 
 class SubscriptionViewSet(mixins.ListModelMixin,
@@ -106,4 +112,28 @@ class SubscribeViewSet(viewsets.ModelViewSet):
             Follow, user=user, author=author
         )
         subscription.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAuthenticated,)
+
+    def create(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = self.request.user
+        data = {'user': user.id, 'recipe': recipe.id}
+        serializer = FavoriteSerializer(
+            data=data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+        favorite_obj = get_object_or_404(
+            Favorite, user=user, recipe=recipe
+        )
+        favorite_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

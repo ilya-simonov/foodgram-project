@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
 from djoser.serializers import UserSerializer
+from django.db import transaction
 
 from rest_framework.validators import UniqueTogetherValidator
-from recipes.models import Ingredient, Tag, Recipe, IngredientRecipe, Follow
+from recipes.models import (Ingredient, Tag, Recipe, IngredientRecipe, Follow,
+                            Favorite)
 from users.models import User
 from djoser import utils
 from djoser.compat import get_user_email, get_user_email_field_name
@@ -24,7 +26,6 @@ class CustomUserSerializer(UserSerializer):
     def get_is_subscribed(self, obj):
         request = self.context['request']
         user = request.user
-        # if request is None or
         if user.is_anonymous:
             return False
         return user.follower.filter(author=obj).exists()
@@ -63,18 +64,105 @@ class IngredientRecipeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'measurement_unit', 'amount']
 
 
+class IngredientCreateRecipeSerializer(serializers.ModelSerializer):
+    id = serializers.PrimaryKeyRelatedField(
+        write_only=True,
+        queryset=Ingredient.objects.all(),
+    )
+
+    class Meta:
+        model = IngredientRecipe
+        fields = ['id', 'amount']
+
+
 class RecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
     ingredients = IngredientRecipeSerializer(
         many=True, read_only=True, source='ingredient_recipes'
     )
+    is_favorited = serializers.SerializerMethodField(
+        read_only=True
+    )
     image = Base64ImageField(allow_null=True)
 
     class Meta:
         model = Recipe
-        fields = ['id', 'tags', 'author', 'ingredients', 'name', 'image',
-                  'text', 'cooking_time']
+        fields = ['id', 'tags', 'author', 'ingredients', 'is_favorited',
+                  'name', 'image', 'text', 'cooking_time']
+
+    def get_is_favorited(self, obj):
+        request = self.context['request']
+        user = request.user
+        if user.is_anonymous:
+            return False
+        return user.favorite.filter(user=user, recipe=obj).exists()
+
+
+class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Tag.objects.all(),
+    )
+    ingredients = IngredientCreateRecipeSerializer(
+        many=True, source='ingredient_recipes',
+    )
+    image = Base64ImageField(allow_null=True)
+
+    class Meta:
+        model = Recipe
+        fields = ['tags', 'ingredients', 'name',
+                  'image', 'text', 'cooking_time']
+
+    @transaction.atomic
+    def create(self, validated_data):
+        request = self.context['request']
+        author = request.user
+        validated_data['author'] = author
+        # print('validated_data: ', validated_data)
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredient_recipes')
+        # print('INGREFIENTS: ', ingredients)
+        recipe = Recipe.objects.create(**validated_data)
+#        self.ingredient_in_recipe_bulk_create(recipe=recipe,
+#                                              ingredients=ingredients)
+        recipe.tags.set(tags)
+        ingredients_in_recipe = [
+            IngredientRecipe(
+                ingredient=ingredient['id'],
+                recipe=recipe,
+                amount=ingredient['amount']
+            ) for ingredient in ingredients
+        ]
+        IngredientRecipe.objects.bulk_create(ingredients_in_recipe)
+        return recipe
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        IngredientRecipe.objects.filter(recipe=instance).delete()
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredient_recipes')
+        instance.tags.set(tags)
+        Recipe.objects.filter(pk=instance.pk).update(**validated_data)
+        ingredients_in_recipe = [
+            IngredientRecipe(
+                ingredient=ingredient['id'],
+                recipe=instance,
+                amount=ingredient['amount']
+            ) for ingredient in ingredients
+        ]
+        IngredientRecipe.objects.bulk_create(ingredients_in_recipe)
+        instance.refresh_from_db()
+        return super().update(instance=instance, validated_data=validated_data)
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        serializer = RecipeSerializer(
+            instance,
+            context=context
+        )
+        return serializer.data
 
 
 class RecipeShortSerializer(serializers.ModelSerializer):
@@ -88,6 +176,7 @@ class RecipeShortSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(CustomUserSerializer):
     recipes = RecipeShortSerializer(many=True, read_only=True)
+    # source='recipes')
     recipes_count = serializers.SerializerMethodField(
         read_only=True
     )
@@ -98,6 +187,7 @@ class SubscriptionSerializer(CustomUserSerializer):
                   'is_subscribed', 'recipes', 'recipes_count']
 
     def get_recipes_count(self, obj):
+
         recipes_count = obj.recipes.count()
         return recipes_count
 
@@ -130,6 +220,29 @@ class SubscribeSerializer(serializers.ModelSerializer):
                 'Нельзя подписаться на самого себя!'
             )
         return value
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorite
+        fields = ['user', 'recipe']
+        validators = (
+            UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=('user', 'recipe')
+            ),
+        )
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        serializer = RecipeShortSerializer(
+            instance.recipe,
+            context=context
+        )
+        return serializer.data
+
+
 
 
 

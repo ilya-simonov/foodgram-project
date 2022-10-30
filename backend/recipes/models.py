@@ -95,3 +95,26 @@ class Follow(models.Model):
         return (
             f'{self.user} подписан на {self.author}'
         )
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorite',
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='in_favorite',
+    )
+
+    class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранные'
+        unique_together = [['user', 'recipe']]
+
+    def __str__(self):
+        return (
+            f'{self.recipe} в избранном у {self.user}'
+        )
