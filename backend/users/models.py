@@ -1,7 +1,6 @@
-from tabnanny import verbose
-from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.db import models
 
 
 class User(AbstractUser):
@@ -23,7 +22,6 @@ class User(AbstractUser):
     last_name = models.CharField('last name', max_length=150)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'password']
-
 
     class Meta:
         verbose_name = 'Пользователь'

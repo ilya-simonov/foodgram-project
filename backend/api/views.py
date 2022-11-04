@@ -1,24 +1,25 @@
-from django.db.models import Sum
-from django.http import HttpResponse, FileResponse
-from django.shortcuts import get_object_or_404
-from djoser.views import UserViewSet
 from datetime import datetime
+
+from django.db.models import Sum
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-
-from rest_framework import status, mixins, viewsets
+from djoser.views import UserViewSet
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
-
-from api.serializers import (TagSerializer, IngredientSerializer,
-                             RecipeSerializer, RecipeCreateUpdateSerializer,
-                             SubscriptionSerializer, SubscribeSerializer,
-                             FavoriteSerializer, ShoppingCartSerializer)
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
-from recipes.models import (Ingredient, Tag, Recipe, Follow, Favorite,
-                            ShoppingCart, IngredientRecipe)
-from .filters import TagsFilter
+from rest_framework.response import Response
+
+from api.serializers import (FavoriteSerializer, IngredientSerializer,
+                             RecipeCreateUpdateSerializer, RecipeSerializer,
+                             ShoppingCartSerializer, SubscribeSerializer,
+                             SubscriptionSerializer, TagSerializer)
+from recipes.models import (Favorite, Follow, Ingredient, IngredientRecipe,
+                            Recipe, ShoppingCart, Tag)
 from users.models import User
+
+from .filters import TagsFilter
 
 
 class CustomUserViewSet(UserViewSet):
@@ -87,6 +88,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class SubscriptionViewSet(mixins.ListModelMixin,
                           viewsets.GenericViewSet):
+    permission_classes = (IsAuthenticated,)
     serializer_class = SubscriptionSerializer
 
     def get_queryset(self):
@@ -165,4 +167,3 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
         )
         shopping_cart_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-

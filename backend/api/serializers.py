@@ -1,15 +1,12 @@
-from rest_framework import serializers
-from drf_extra_fields.fields import Base64ImageField
-from djoser.serializers import UserSerializer
 from django.db import transaction
-
+from djoser.serializers import UserSerializer
+from drf_extra_fields.fields import Base64ImageField
+from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from recipes.models import (Ingredient, Tag, Recipe, IngredientRecipe, Follow,
-                            Favorite, ShoppingCart)
+
+from recipes.models import (Favorite, Follow, Ingredient, IngredientRecipe,
+                            Recipe, ShoppingCart, Tag)
 from users.models import User
-from djoser import utils
-from djoser.compat import get_user_email, get_user_email_field_name
-from djoser.conf import settings
 
 
 class CustomUserSerializer(UserSerializer):
@@ -21,7 +18,6 @@ class CustomUserSerializer(UserSerializer):
         model = User
         fields = ['email', 'id', 'username', 'first_name', 'last_name',
                   'is_subscribed']
-        # read_only_fields = (settings.LOGIN_FIELD,)
 
     def get_is_subscribed(self, obj):
         request = self.context['request']
@@ -264,17 +260,3 @@ class ShoppingCartSerializer(FavoriteSerializer):
                 fields=('user', 'recipe')
             ),
         )
-
-
-
-
-
-#    amount = serializers.ModelField(model_field=Ingredient._meta.get_field('amount'))
-# amount = serializers.ModelField(model_field=Recipe.ingridients._meta.get_field('amount'))
-
-# class AmountIngredientField(serializers.RelatedField):
-#    def to_representation(self, value):
-#        amount = 
-
-
-
