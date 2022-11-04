@@ -5,7 +5,7 @@ from django.db import transaction
 
 from rest_framework.validators import UniqueTogetherValidator
 from recipes.models import (Ingredient, Tag, Recipe, IngredientRecipe, Follow,
-                            Favorite)
+                            Favorite, ShoppingCart)
 from users.models import User
 from djoser import utils
 from djoser.compat import get_user_email, get_user_email_field_name
@@ -84,12 +84,16 @@ class RecipeSerializer(serializers.ModelSerializer):
     is_favorited = serializers.SerializerMethodField(
         read_only=True
     )
+    is_in_shopping_cart = serializers.SerializerMethodField(
+        read_only=True
+    )
     image = Base64ImageField(allow_null=True)
 
     class Meta:
         model = Recipe
         fields = ['id', 'tags', 'author', 'ingredients', 'is_favorited',
-                  'name', 'image', 'text', 'cooking_time']
+                  'is_in_shopping_cart', 'name', 'image', 'text',
+                  'cooking_time']
 
     def get_is_favorited(self, obj):
         request = self.context['request']
@@ -97,6 +101,13 @@ class RecipeSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return user.favorite.filter(user=user, recipe=obj).exists()
+
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context['request']
+        user = request.user
+        if user.is_anonymous:
+            return False
+        return user.shopping_cart.filter(user=user, recipe=obj).exists()
 
 
 class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
@@ -242,6 +253,17 @@ class FavoriteSerializer(serializers.ModelSerializer):
         )
         return serializer.data
 
+
+class ShoppingCartSerializer(FavoriteSerializer):
+    class Meta:
+        model = ShoppingCart
+        fields = ['user', 'recipe']
+        validators = (
+            UniqueTogetherValidator(
+                queryset=ShoppingCart.objects.all(),
+                fields=('user', 'recipe')
+            ),
+        )
 
 
 

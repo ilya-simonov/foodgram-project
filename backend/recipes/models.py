@@ -1,6 +1,5 @@
 from colorfield.fields import ColorField
 from django.db import models
-from drf_extra_fields.fields import Base64ImageField
 from users.models import User
 
 
@@ -117,4 +116,27 @@ class Favorite(models.Model):
     def __str__(self):
         return (
             f'{self.recipe} в избранном у {self.user}'
+        )
+
+
+class ShoppingCart(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='shopping_cart',
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='in_shopping_cart',
+    )
+
+    class Meta:
+        verbose_name = 'Покупка'
+        verbose_name_plural = 'Покупки'
+        unique_together = [['user', 'recipe']]
+
+    def __str__(self):
+        return (
+            f'{self.recipe} в списке покупок у {self.user}'
         )

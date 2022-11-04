@@ -1,5 +1,10 @@
+from django.db.models import Sum
+from django.http import HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from datetime import datetime
+from django_filters.rest_framework import DjangoFilterBackend
+
 from rest_framework import status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,29 +12,16 @@ from rest_framework.response import Response
 from api.serializers import (TagSerializer, IngredientSerializer,
                              RecipeSerializer, RecipeCreateUpdateSerializer,
                              SubscriptionSerializer, SubscribeSerializer,
-                             FavoriteSerializer)
+                             FavoriteSerializer, ShoppingCartSerializer)
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
-from recipes.models import Ingredient, Tag, Recipe, Follow, Favorite
+from recipes.models import (Ingredient, Tag, Recipe, Follow, Favorite,
+                            ShoppingCart, IngredientRecipe)
+from .filters import TagsFilter
 from users.models import User
 
 
-class UserViewSet2(mixins.ListModelMixin, mixins.RetrieveModelMixin,
-                   viewsets.GenericViewSet):
-    queryset = User.objects.all()
-    # serializer_class = UserSerializer
-
-    # @action(detail=False, methods=['get'], url_path='me')
-    # permission_classes=[IsAuthenticated])
-    # def get_object_me(self, request):
-        # user_me = get_object_or_404(User, username=request.user.username)
-        # serializer = UserSerializer(user_me)
-        # return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 class CustomUserViewSet(UserViewSet):
-#   serializer_class = CustomUserSerializer
-
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset
@@ -53,12 +45,44 @@ class IngredientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    serializer_class = RecipeSerializer
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TagsFilter
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
             return RecipeSerializer
         return RecipeCreateUpdateSerializer
+
+    @action(
+        detail=False,
+        permission_classes=(IsAuthenticated,)
+    )
+    def download_shopping_cart(self, request):
+        user = request.user
+        if not user.shopping_cart.exists():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        ingredients = IngredientRecipe.objects.filter(
+            recipe__in_shopping_cart__user=user
+        ).values(
+            'ingredient__name',
+            'ingredient__measurement_unit'
+        ).annotate(amount=Sum('amount'))
+        today = datetime.today()
+        shopping_list = (
+            f'Список покупок для: {user.get_full_name()}\n\n'
+        )
+        shopping_list += '\n'.join([
+            f'- {ingredient["ingredient__name"]} '
+            f'({ingredient["ingredient__measurement_unit"]})'
+            f' - {ingredient["amount"]}'
+            for ingredient in ingredients
+        ])
+        shopping_list += f'\n\nДата: {today:%Y-%m-%d}'
+        filename = f'{user.username}_shopping_list.txt'
+        response = HttpResponse(shopping_list, content_type='text/plain')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
 
 
 class SubscriptionViewSet(mixins.ListModelMixin,
@@ -69,26 +93,6 @@ class SubscriptionViewSet(mixins.ListModelMixin,
         request = self.request
         queryset = User.objects.filter(following__user=request.user)
         return queryset
-
-
-class SubscribeViewSet2(viewsets.ViewSet):
-    @action(detail=True, methods=['post'], permission_classes=(IsAuthenticated,))
-    def subscribe(self, request, id):
-        user = request.user
-        author = get_object_or_404(User, id=id)
-        follow_obj = Follow.objects.filter(user=user, author=author)
-        if request.method == 'POST':
-            if user == author:
-                return Response('Нельзя подписаться на себя!',
-                                status=status.HTTP_400_BAD_REQUEST)
-            if follow_obj.exists():
-                return Response('Вы уже подписаны на данного пользователя!',
-                                status=status.HTTP_400_BAD_REQUEST)
-            follow_obj = Follow.objects.create(user=user, author=author)
-            follow_obj.save()
-            # serializer = SubscriptionSerializer(author)
-            # serializer.data, 
-            return Response(status=status.HTTP_201_CREATED)
 
 
 class SubscribeViewSet(viewsets.ModelViewSet):
@@ -137,3 +141,28 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         )
         favorite_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ShoppingCartViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAuthenticated,)
+
+    def create(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = self.request.user
+        data = {'user': user.id, 'recipe': recipe.id}
+        serializer = ShoppingCartSerializer(
+            data=data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, id):
+        recipe = get_object_or_404(Recipe, id=id)
+        user = request.user
+        shopping_cart_obj = get_object_or_404(
+            ShoppingCart, user=user, recipe=recipe
+        )
+        shopping_cart_obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

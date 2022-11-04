@@ -3,7 +3,7 @@ from django.urls import include, path
 
 from api.views import (TagViewSet, IngredientViewSet,
                        RecipeViewSet, SubscriptionViewSet, SubscribeViewSet,
-                       FavoriteViewSet)
+                       FavoriteViewSet, ShoppingCartViewSet)
 
 
 app_name = 'api'
@@ -16,6 +16,10 @@ router.register(r'recipes', RecipeViewSet)
 router.register(r'recipes/(?P<id>\d+)/favorite',
                 FavoriteViewSet,
                 basename='favorite'
+                )
+router.register(r'recipes/(?P<id>\d+)/shopping_cart',
+                ShoppingCartViewSet,
+                basename='shopping_cart'
                 )
 router.register(r'users/subscriptions', SubscriptionViewSet,
                 basename='subscription')
