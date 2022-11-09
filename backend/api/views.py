@@ -134,10 +134,10 @@ class CustomViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, id=id)
         user = request.user
         queryset = self.get_queryset()
-        favorite_obj = get_object_or_404(
+        obj = get_object_or_404(
             queryset, user=user, recipe=recipe
         )
-        favorite_obj.delete()
+        obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
