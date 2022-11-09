@@ -167,7 +167,6 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             ingredients = data.get('ingredientrecipe')
             uniq_ingredients = set()
             for ingredient in ingredients:
-                id = ingredient['id']
                 amount = ingredient['amount']
                 if amount <= 0:
                     raise serializers.ValidationError(
@@ -177,7 +176,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
 
             if len(uniq_ingredients) != len(ingredients):
                 raise serializers.ValidationError(
-                    'Ингридиенты должны быть уникальными.'
+                    'Ингредиенты должны быть уникальными.'
                 )
         return data
 

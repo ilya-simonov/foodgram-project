@@ -130,28 +130,22 @@ class CustomViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
-
-class FavoriteViewSet(CustomViewSet):
-    serializer_class = FavoriteSerializer
-
     def delete(self, request, id):
         recipe = get_object_or_404(Recipe, id=id)
         user = request.user
+        queryset = self.get_queryset()
         favorite_obj = get_object_or_404(
-            Favorite, user=user, recipe=recipe
+            queryset, user=user, recipe=recipe
         )
         favorite_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class FavoriteViewSet(CustomViewSet):
+    serializer_class = FavoriteSerializer
+    queryset = Favorite.objects.all()
+
+
 class ShoppingCartViewSet(CustomViewSet):
     serializer_class = ShoppingCartSerializer
-
-    def delete(self, request, id):
-        recipe = get_object_or_404(Recipe, id=id)
-        user = request.user
-        shopping_cart_obj = get_object_or_404(
-            ShoppingCart, user=user, recipe=recipe
-        )
-        shopping_cart_obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    queryset = ShoppingCart.objects.all()
