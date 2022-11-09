@@ -27,12 +27,6 @@ class CustomUserSerializer(UserSerializer):
         return user.follower.filter(author=obj).exists()
 
 
-class UserSerializer2(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email', 'id', 'username', 'first_name', 'last_name']
-
-
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
@@ -121,19 +115,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ['tags', 'ingredients', 'name',
                   'image', 'text', 'cooking_time']
 
-    @transaction.atomic
-    def create(self, validated_data):
-        request = self.context['request']
-        author = request.user
-        validated_data['author'] = author
-        # print('validated_data: ', validated_data)
-        tags = validated_data.pop('tags')
-        ingredients = validated_data.pop('ingredient_recipes')
-        # print('INGREFIENTS: ', ingredients)
-        recipe = Recipe.objects.create(**validated_data)
-#        self.ingredient_in_recipe_bulk_create(recipe=recipe,
-#                                              ingredients=ingredients)
-        recipe.tags.set(tags)
+    def ingredientrecipe_bulk_create(self, recipe, ingredients):
         ingredients_in_recipe = [
             IngredientRecipe(
                 ingredient=ingredient['id'],
@@ -142,6 +124,18 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             ) for ingredient in ingredients
         ]
         IngredientRecipe.objects.bulk_create(ingredients_in_recipe)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        request = self.context['request']
+        author = request.user
+        validated_data['author'] = author
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredient_recipes')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        self.ingredientrecipe_bulk_create(recipe=recipe,
+                                          ingredients=ingredients)
         return recipe
 
     @transaction.atomic
@@ -150,15 +144,8 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredient_recipes')
         instance.tags.set(tags)
-        Recipe.objects.filter(pk=instance.pk).update(**validated_data)
-        ingredients_in_recipe = [
-            IngredientRecipe(
-                ingredient=ingredient['id'],
-                recipe=instance,
-                amount=ingredient['amount']
-            ) for ingredient in ingredients
-        ]
-        IngredientRecipe.objects.bulk_create(ingredients_in_recipe)
+        self.ingredientrecipe_bulk_create(recipe=instance,
+                                          ingredients=ingredients)
         instance.refresh_from_db()
         return super().update(instance=instance, validated_data=validated_data)
 
@@ -170,6 +157,29 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             context=context
         )
         return serializer.data
+
+    def validate(self, data):
+        if len(data) < 1:
+            raise serializers.ValidationError(
+                'Не переданы ингредиенты.'
+            )
+        if 'ingredientrecipe' in data:
+            ingredients = data.get('ingredientrecipe')
+            uniq_ingredients = set()
+            for ingredient in ingredients:
+                id = ingredient['id']
+                amount = ingredient['amount']
+                if amount <= 0:
+                    raise serializers.ValidationError(
+                        'Минимальное количество ингредиента: 1'
+                    )
+                uniq_ingredients.add(id)
+
+            if len(uniq_ingredients) != len(ingredients):
+                raise serializers.ValidationError(
+                    'Ингридиенты должны быть уникальными.'
+                )
+        return data
 
 
 class RecipeShortSerializer(serializers.ModelSerializer):
@@ -183,7 +193,6 @@ class RecipeShortSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(CustomUserSerializer):
     recipes = RecipeShortSerializer(many=True, read_only=True)
-    # source='recipes')
     recipes_count = serializers.SerializerMethodField(
         read_only=True
     )

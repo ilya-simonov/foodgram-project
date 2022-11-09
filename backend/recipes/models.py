@@ -73,6 +73,14 @@ class IngredientRecipe(models.Model):
                                    related_name='ingredient_recipes')
     amount = models.PositiveSmallIntegerField('Количество')
 
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('recipe', 'ingredient'),
+                name='unique_ingredientrecipe'
+            ),
+        )
+
 
 class Follow(models.Model):
     user = models.ForeignKey(
@@ -89,7 +97,12 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        unique_together = [['user', 'author']]
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'author'),
+                name='unique_follow'
+            ),
+        )
 
     def __str__(self):
         return (
@@ -112,7 +125,12 @@ class Favorite(models.Model):
     class Meta:
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
-        unique_together = [['user', 'recipe']]
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='unique_favorite'
+            ),
+        )
 
     def __str__(self):
         return (
@@ -135,7 +153,12 @@ class ShoppingCart(models.Model):
     class Meta:
         verbose_name = 'Покупка'
         verbose_name_plural = 'Покупки'
-        unique_together = [['user', 'recipe']]
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='unique_shoppingcart'
+            ),
+        )
 
     def __str__(self):
         return (

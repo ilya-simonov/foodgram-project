@@ -1,25 +1,23 @@
-from datetime import datetime
-
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from rest_framework import mixins, status, viewsets
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status, mixins, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (AllowAny, IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 
-from api.serializers import (FavoriteSerializer, IngredientSerializer,
-                             RecipeCreateUpdateSerializer, RecipeSerializer,
-                             ShoppingCartSerializer, SubscribeSerializer,
-                             SubscriptionSerializer, TagSerializer)
-from recipes.models import (Favorite, Follow, Ingredient, IngredientRecipe,
-                            Recipe, ShoppingCart, Tag)
-from users.models import User
-
+from api.serializers import (TagSerializer, IngredientSerializer,
+                             RecipeSerializer, RecipeCreateUpdateSerializer,
+                             SubscriptionSerializer, SubscribeSerializer,
+                             FavoriteSerializer, ShoppingCartSerializer)
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
+from recipes.models import (Ingredient, Tag, Recipe, Follow, Favorite,
+                            ShoppingCart, IngredientRecipe)
 from .filters import TagsFilter
+from users.models import User
 
 
 class CustomUserViewSet(UserViewSet):
@@ -68,15 +66,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).values(
             'ingredient__name',
             'ingredient__measurement_unit'
-        ).annotate(amount=Sum('amount'))
-        today = datetime.today()
+        ).annotate(sum=Sum('amount'))
+        today = timezone.now()
         shopping_list = (
             f'Список покупок для: {user.get_full_name()}\n\n'
         )
         shopping_list += '\n'.join([
             f'- {ingredient["ingredient__name"]} '
             f'({ingredient["ingredient__measurement_unit"]})'
-            f' - {ingredient["amount"]}'
+            f' - {ingredient["sum"]}'
             for ingredient in ingredients
         ])
         shopping_list += f'\n\nДата: {today:%Y-%m-%d}'
@@ -88,7 +86,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class SubscriptionViewSet(mixins.ListModelMixin,
                           viewsets.GenericViewSet):
-    permission_classes = (IsAuthenticated,)
     serializer_class = SubscriptionSerializer
 
     def get_queryset(self):
@@ -98,7 +95,6 @@ class SubscriptionViewSet(mixins.ListModelMixin,
 
 
 class SubscribeViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated,)
 
     def create(self, request, id):
         author = get_object_or_404(User, id=id)
@@ -121,19 +117,22 @@ class SubscribeViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class FavoriteViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated,)
-
+class CustomViewSet(viewsets.ModelViewSet):
     def create(self, request, id):
         recipe = get_object_or_404(Recipe, id=id)
         user = self.request.user
         data = {'user': user.id, 'recipe': recipe.id}
-        serializer = FavoriteSerializer(
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(
             data=data, context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
+
+class FavoriteViewSet(CustomViewSet):
+    serializer_class = FavoriteSerializer
 
     def delete(self, request, id):
         recipe = get_object_or_404(Recipe, id=id)
@@ -145,19 +144,8 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ShoppingCartViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated,)
-
-    def create(self, request, id):
-        recipe = get_object_or_404(Recipe, id=id)
-        user = self.request.user
-        data = {'user': user.id, 'recipe': recipe.id}
-        serializer = ShoppingCartSerializer(
-            data=data, context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+class ShoppingCartViewSet(CustomViewSet):
+    serializer_class = ShoppingCartSerializer
 
     def delete(self, request, id):
         recipe = get_object_or_404(Recipe, id=id)
