@@ -51,7 +51,7 @@ class Recipe(models.Model):
         upload_to='recipes/images/',
         null=True,
         default=None
-        )
+    )
     text = models.TextField('Описание')
     cooking_time = models.IntegerField(
         verbose_name='Время приготовления',
@@ -69,7 +69,7 @@ class Recipe(models.Model):
 class IngredientRecipe(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
                                related_name='ingredient_recipes')
-    ingredient = models.ForeignKey(Ingredient,  on_delete=models.CASCADE,
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE,
                                    related_name='ingredient_recipes')
     amount = models.PositiveSmallIntegerField('Количество')
 
