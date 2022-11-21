@@ -202,9 +202,7 @@ class SubscriptionSerializer(CustomUserSerializer):
                   'is_subscribed', 'recipes', 'recipes_count']
 
     def get_recipes_count(self, obj):
-
-        recipes_count = obj.recipes.count()
-        return recipes_count
+        return obj.recipes.count()
 
 
 class SubscribeSerializer(serializers.ModelSerializer):

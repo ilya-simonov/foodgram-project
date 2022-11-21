@@ -17,13 +17,13 @@ from api.serializers import (FavoriteSerializer, IngredientSerializer,
 from recipes.models import (Favorite, Follow, Ingredient, IngredientRecipe,
                             Recipe, ShoppingCart, Tag)
 from users.models import User
+
 from .filters import TagsFilter
 
 
 class CustomUserViewSet(UserViewSet):
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        return super().get_queryset()
 
 
 class TagViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
@@ -90,8 +90,7 @@ class SubscriptionViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         request = self.request
-        queryset = User.objects.filter(following__user=request.user)
-        return queryset
+        return User.objects.filter(following__user=request.user)
 
 
 class SubscribeViewSet(viewsets.ModelViewSet):
