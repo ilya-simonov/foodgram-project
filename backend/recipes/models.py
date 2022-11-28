@@ -59,7 +59,7 @@ class Recipe(models.Model):
     )
 
     class Meta:
-        ordering = ('-pub_date',)
+        ordering = ('-id',)
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
 
