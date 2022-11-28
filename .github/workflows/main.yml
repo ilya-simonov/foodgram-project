@@ -23,7 +23,7 @@ jobs:
       run: |
         python -m flake8
 
-build_and_push_to_docker_hub:
+  build_and_push_to_docker_hub:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     needs: tests
@@ -45,4 +45,4 @@ build_and_push_to_docker_hub:
         uses: docker/build-push-action@v2 
         with:
           push: true
-          tags: ilyasimonov/foodgram-project:latest 
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram-backend:v2
