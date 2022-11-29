@@ -41,6 +41,13 @@ class IngredientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     pagination_class = None
     permission_classes = (AllowAny,)
 
+    def get_queryset(self):
+        queryset = self.queryset
+        name = self.request.query_params.get('name')
+        if name is not None:
+            return queryset.filter(name__startswith=name)
+        return queryset
+
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
