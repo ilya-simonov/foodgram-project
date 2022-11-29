@@ -54,7 +54,7 @@ class Recipe(models.Model):
         default=None
     )
     text = models.TextField('Описание')
-    cooking_time = models.IntegerField(
+    cooking_time = models.PositiveIntegerField(
         verbose_name='Время приготовления',
         help_text='Укажите время приготовления в минутах'
     )
