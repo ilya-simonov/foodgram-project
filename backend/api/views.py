@@ -45,7 +45,8 @@ class IngredientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         queryset = self.queryset
         name = self.request.query_params.get('name')
         if name is not None:
-            return queryset.filter(name__startswith=name)
+            return (queryset.filter(name__endswith=name).__or__.
+                    filter(name__startswith=name))
         return queryset
 
 
