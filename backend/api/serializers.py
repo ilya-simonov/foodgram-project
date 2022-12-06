@@ -136,6 +136,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         recipe.tags.set(tags)
         self.ingredientrecipe_bulk_create(recipe=recipe,
                                           ingredients=ingredients)
+        print(validated_data)
         return recipe
 
     @transaction.atomic
@@ -159,12 +160,8 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return serializer.data
 
     def validate(self, data):
-        if len(data) < 1:
-            raise serializers.ValidationError(
-                'Не переданы ингредиенты.'
-            )
-        if 'ingredientrecipe' in data:
-            ingredients = data.get('ingredientrecipe')
+        if 'ingredient_recipes' in data:
+            ingredients = data['ingredient_recipes']
             uniq_ingredients = set()
             for ingredient in ingredients:
                 amount = ingredient['amount']
