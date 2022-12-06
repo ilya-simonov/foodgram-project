@@ -10,6 +10,7 @@ from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 
+from api.pagination import RecipePagination
 from api.serializers import (FavoriteSerializer, IngredientSerializer,
                              RecipeCreateUpdateSerializer, RecipeSerializer,
                              ShoppingCartSerializer, SubscribeSerializer,
@@ -55,6 +56,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TagsFilter
     permission_classes = (IsAuthenticatedOrReadOnly,)
+    pagination_class = RecipePagination
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -63,7 +65,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=False,
-        permission_classes=(IsAuthenticated,)
+        permission_classes=(IsAuthenticated,),
+        pagination_class=None
     )
     def download_shopping_cart(self, request):
         user = request.user

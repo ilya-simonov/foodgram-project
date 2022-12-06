@@ -136,6 +136,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         recipe.tags.set(tags)
         self.ingredientrecipe_bulk_create(recipe=recipe,
                                           ingredients=ingredients)
+        print(validated_data)
         return recipe
 
     @transaction.atomic
@@ -158,13 +159,25 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         )
         return serializer.data
 
+#    def validate_ingredients(self, ingredients):
+        # raise Exception('test')
+#        ingredients_list = []
+#        for ingredient in ingredients:
+            # id_to_check = ingredient['id']
+            # ingredient_to_check = Ingredient.objects.filter(id=id_to_check)
+#            ingredient_to_check = ingredient['ingredient']
+            # if not ingredient_to_check.exists():
+            #    raise serializers.ValidationError(
+            #        f"We have no such ingredient '{ingredient_to_check}' in database")
+            # if ingredient_to_check in ingredients_list:
+            #    raise serializers.ValidationError(
+            #        f"You're trying to use '{ingredient_to_check}' twice")
+#            ingredients_list.append(ingredient_to_check)
+#        return ingredients
+
     def validate(self, data):
-        if len(data) < 1:
-            raise serializers.ValidationError(
-                'Не переданы ингредиенты.'
-            )
-        if 'ingredientrecipe' in data:
-            ingredients = data.get('ingredientrecipe')
+        if 'ingredient_recipes' in data:
+            ingredients = data['ingredient_recipes']
             uniq_ingredients = set()
             for ingredient in ingredients:
                 amount = ingredient['amount']
