@@ -136,6 +136,7 @@ dmypy.json
 
 # папки со статикой и медиа
 # static/
+docs/
 backend/static/
 # media/
 /static/
